@@ -3,7 +3,8 @@ import { mergeGeometries } from "three/addons/BufferGeometryUtils.js";
 import { LAYOUT, addCollider, seeded } from "./layout.js";
 import { StaticBatch, placement } from "./world.js";
 import { Props, StallFrame, buildStall, counterFront, defineProps, fillStall, neighbourSign } from "./stalls.js";
-import { bannerTexture, glowTexture, signTexture } from "./textures.js";
+import { glowTexture, signTexture, windowTexture } from "./textures.js";
+import { buildPerimeter } from "./perimeter.js";
 
 const NORTH_TRADES = { "-24": "plastics", "-18": "oil", 18: "bags" };
 const SOUTH_FRONT_TRADES = ["produce", "household", "grains", "shoes", "plastics", "fruit", "grains", "household", "oil", "produce", "fruit"];
@@ -13,16 +14,13 @@ const WALL_TINTS = ["corrTeal", "corrBlue", "corrTeal", "corrGreen", "corrTeal",
 const SIGN_COLORS = [["#f4ead5", "#1d3b5a"], ["#1f6fb5", "#fffaf0"], ["#f2c230", "#2b1d14"], ["#2a8a4a", "#fffaf0"], ["#c8352e", "#fffaf0"]];
 const HALL_BLOCKS = [[-17.6, -15.6, "wall"], [-13, -8, "potatoes"], [-5.2, -1.6, "mixed"], [3.1, 6.7, "roots"], [9.5, 13.2, "fruit"], [15.8, 19.6, "grains"]];
 const HALL_COLUMN_X = [22, 30, 38, 46, 54, 62];
+const HALL_GAP_X = 50;
+const HALL_SOUTH_GAP_X = 34;
 const HALL_COLUMN_Z = [-18, -10.5, -3.4, 4.9, 11.35, 17.7, 22];
 const ACROSS_COLORS = ["plasterCream", "plasterYellow", "plasterBlue", "plasterPink", "plasterWhite", "plasterGreen"];
 const ACROSS_SIGNS = ["Alimentation", "Salon de coiffure", "Boutique", "Restaurant", "Quincaillerie", "Pharmacie", "Mobile Money", "Atelier", "Librairie", "Hotel"];
 
 const counterMaterials = new Map();
-
-function quad(world, batch, size, position, material, rotation = null) {
-  /** Queue a flat plane of a size at a position. */
-  batch.add(new THREE.PlaneGeometry(...size), position, material, rotation);
-}
 
 function buildGround(world, batch) {
   /** Lay the red earth, the sandy lanes, the concrete hall floor, the curb, the road and the far pavement. */
@@ -36,59 +34,6 @@ function buildGround(world, batch) {
   batch.box([52.6, 0.04, 4.2], [-4, 0.02, LAYOUT.clothes.center], m.earthLane);
   for (const x of LAYOUT.passages) batch.box([2.4, 0.04, 9], [x, 0.02, 8], m.earthLane);
   batch.box([40, 0.1, 40], [42, 0.05, 2], m.concrete);
-  batch.box([3.6, 0.08, 46], [-31.8, 0.04, 3], m.concrete);
-  batch.box([0.5, 0.22, 46], [-33.85, 0.11, 3], m.concreteDark);
-  batch.box([0.6, 0.06, 46], [-34.4, 0.03, 3], m.steelDark);
-  batch.box([0.6, 0.24, 300], [-48.2, 0.12, 0], m.concreteDark);
-  batch.box([LAYOUT.road.width, 0.05, 300], [LAYOUT.road.x, 0.025, 0], m.asphalt);
-  for (let z = -148; z < 150; z += 6) batch.box([0.15, 0.06, 2.6], [LAYOUT.road.x, 0.04, z], m.cream);
-  batch.box([0.6, 0.24, 300], [-56.8, 0.12, 0], m.concreteDark);
-  batch.box([5.5, 0.18, 300], [-59.8, 0.09, 0], m.concrete);
-}
-
-function buildFacade(world, batch, props) {
-  /** Build the long yellow outer building: grille front, yellow awning on grey pillars, and a row of gables above. */
-  const m = world.materials;
-  const x = LAYOUT.facadeX;
-  const segments = [[-18, LAYOUT.lane.zMin], [LAYOUT.lane.zMax, LAYOUT.clothes.zMin], [LAYOUT.clothes.zMax, 26]];
-  for (const [z0, z1] of segments) {
-    const length = z1 - z0;
-    const middle = (z0 + z1) / 2;
-    batch.box([0.3, 0.35, length], [x, 0.18, middle], m.plasterYellow);
-    batch.box([0.1, 0.1, length], [x, 2.85, middle], m.steelDark);
-    for (let z = z0 + 0.1; z < z1; z += 0.16) batch.box([0.03, 2.5, 0.03], [x, 1.6, z], m.steelDark);
-    addCollider(x - 0.2, z0, x + 0.2, z1);
-  }
-  batch.box([0.25, 3.0, 46], [x, 4.5, 4], m.corrYellow);
-  const slope = Math.atan2(0.5, 3.6);
-  batch.add(new THREE.BoxGeometry(3.9, 0.05, 46), [x - 1.8, 3.15, 4], m.corrYellow, [0, 0, slope]);
-  batch.box([0.08, 0.25, 46], [x - 3.65, 2.86, 4], m.corrYellow);
-  for (let z = -18; z <= 26; z += 4.4) {
-    batch.box([0.22, 2.9, 0.22], [x - 3.45, 1.45, z], m.steel);
-    addCollider(x - 3.6, z - 0.15, x - 3.3, z + 0.15);
-  }
-  for (let z = -18; z < 26; z += 7.33) {
-    const shape = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(7.33, 0), new THREE.Vector2(3.665, 2.4)]);
-    const gable = new THREE.ExtrudeGeometry(shape, { depth: 0.2, bevelEnabled: false }).rotateY(Math.PI / 2);
-    batch.add(gable, [x - 0.1, 6.0, z + 7.33], m.corrYellow);
-    const roofSlope = Math.atan2(2.4, 3.665);
-    const length = Math.hypot(2.4, 3.665) + 0.15;
-    for (const side of [-1, 1]) {
-      batch.add(new THREE.BoxGeometry(3.4, 0.05, length), [x + 1.6, 7.2, z + 3.665 + side * 1.83], m.corrYellow, [side * roofSlope, 0, 0]);
-    }
-    batch.box([0.4, 6, 0.4], [x - 0.05, 3, z], m.corrYellow);
-  }
-  const sign = new THREE.MeshLambertMaterial({ map: signTexture("KIMIRONKO MARKET", { background: "#1d5b3a", color: "#fff3c4",
-    border: "#f2c14e", width: 1024, height: 170, font: "900 120px Georgia, serif" }) });
-  quad(world, batch, [6.4, 1.06], [x - 0.15, 4.6, LAYOUT.lane.center], sign, [0, -Math.PI / 2, 0]);
-  quad(world, batch, [6.4, 1.06], [x + 0.15, 4.6, LAYOUT.lane.center], sign, [0, Math.PI / 2, 0]);
-  const clothesSign = new THREE.MeshLambertMaterial({ map: signTexture("Imyenda / Clothes & Bags", { background: "#f4ead5", color: "#8a2a1a",
-    width: 1024, height: 170, font: "800 100px Georgia, serif" }) });
-  quad(world, batch, [5.2, 0.86], [x - 0.15, 4.6, LAYOUT.clothes.center], clothesSign, [0, -Math.PI / 2, 0]);
-  quad(world, batch, [5.2, 0.86], [x + 0.15, 4.6, LAYOUT.clothes.center], clothesSign, [0, Math.PI / 2, 0]);
-  const banner = new THREE.MeshLambertMaterial({ map: bannerTexture("Murakaza neza"), side: THREE.DoubleSide });
-  quad(world, batch, [4.2, 0.8], [x - 3.62, 2.35, LAYOUT.lane.center], banner, [0, -Math.PI / 2, 0]);
-  props.add("cord", placement([x - 3.62, 2.85, LAYOUT.lane.center - 2.1], null, [1, 0.12, 1]));
 }
 
 function buildNorthTerrace(world, batch, props, vendors) {
@@ -161,7 +106,8 @@ function buildSouthSide(world, batch, props, vendors) {
   });
   const z0 = LAYOUT.southRow.back + 0.1;
   const z1 = 30;
-  for (const [x0, x1, wall, roof] of [[-30, -6, "corrBlue", "corrRoof"], [-6, 22, "corrTeal", "corrGreen"]]) {
+  const sheds = [[-30, -6, "corrBlue", "corrRoof"], [-6, 22, "corrTeal", "corrGreen"]];
+  for (const [x0, x1, wall, roof] of sheds) {
     const width = x1 - x0;
     const middle = (x0 + x1) / 2;
     batch.box([width, 6.2, 0.2], [middle, 3.1, z0], m[wall]);
@@ -177,8 +123,28 @@ function buildSouthSide(world, batch, props, vendors) {
       const shape = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(z1 - z0, 0), new THREE.Vector2(half, 2.6)]);
       batch.add(new THREE.ShapeGeometry(shape), [x, 6.2, z0], m[wall], [0, -Math.PI / 2, 0]);
     }
+    addCollider(x0, z0, x1, z1);
   }
-  addCollider(-30, z0, 22, z1);
+}
+
+function buildMainGateLane(world, batch, props) {
+  /** Roof the first stretch of the lane inside the main gate and stand two umbrellas just inside the gate. */
+  const m = world.materials;
+  const z = LAYOUT.mainGate.z;
+  const x0 = LAYOUT.facadeX + 0.2;
+  const x1 = x0 + 11;
+  batch.add(new THREE.BoxGeometry(x1 - x0, 0.05, 3.4), [(x0 + x1) / 2, 3.62, z], m.corrRust, [0.04, 0, 0]);
+  for (let x = x0 + 1.5; x < x1; x += 3) {
+    props.add("cord", placement([x, 3.6, z], null, [1, 0.45, 1]));
+    props.add("bulb", placement([x, 3.1, z]));
+  }
+  const umbrellas = new THREE.Mesh(mergeGeometries([
+    umbrellaGeometry([0xd62828, 0xe8543c]).scale(0.7, 1.25, 0.7).translate(x0 + 1.1, 0, z - 1.3),
+    umbrellaGeometry([0xf2c230, 0xf6d04a]).scale(0.7, 1.25, 0.7).translate(x0 + 2.6, 0, z + 1.3),
+  ]), new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+  umbrellas.castShadow = true;
+  world.scene.add(umbrellas);
+  for (const [x, dz] of [[x0 + 1.1, -1.3], [x0 + 2.6, 1.3]]) addCollider(x - 0.08, z + dz - 0.08, x + 0.08, z + dz + 0.08);
 }
 
 function buildHall(world, batch, props, vendors) {
@@ -230,10 +196,15 @@ function buildHall(world, batch, props, vendors) {
   for (const [z0, z1] of sheetZ) addSlab(z0, z1, m.corrRoof, roofSheets);
   for (const [s0, s1] of skylights) addSlab(s0, s1, m.skylight, roofSheets);
   const roofMeshes = roofSheets.build(world.scene);
-  for (const [zEdge] of [[zMin], [zMax]]) batch.box([xMax - xMin + 1.2, 0.45, 0.08], [(xMin + xMax) / 2, eave - 0.05, zEdge + (zEdge < 0 ? -0.6 : 0.6)], m.fasciaBlue);
+  for (const [zEdge] of [[zMin], [zMax]]) {
+    const outward = zEdge < 0 ? -1 : 1;
+    batch.box([xMax - xMin + 1.2, 0.45, 0.08], [(xMin + xMax) / 2, eave - 0.05, zEdge + outward * 0.6], m.fasciaBlue);
+    batch.box([xMax - xMin + 1.2, 0.14, 0.18], [(xMin + xMax) / 2, eave - 0.32, zEdge + outward * 0.74], m.steel);
+    for (const x of [xMin + 0.4, (xMin + xMax) / 2, xMax - 0.4]) batch.box([0.1, eave - 0.3, 0.1], [x, (eave - 0.3) / 2, zEdge + outward * 0.78], m.steel);
+  }
   for (const [x0, x1, zWall] of [[xMin, xMax, zMin], [xMin, xMax, zMax]]) {
     for (let x = x0; x < x1; x += 8) {
-      if (Math.abs(x + 4 - 42) < 1) continue;
+      if (Math.abs(x + 4 - HALL_GAP_X) < 1 || (zWall === zMax && Math.abs(x + 4 - HALL_SOUTH_GAP_X) < 1)) continue;
       batch.box([7.6, 2.3, 0.1], [x + 4, 1.15, zWall], m.corrBlue);
       addCollider(x, zWall - 0.1, x + 8, zWall + 0.1);
     }
@@ -400,8 +371,56 @@ export function motoGroup(world, hex) {
   return group;
 }
 
+function truckGroup(world, hex) {
+  /** Return a medium lorry: a painted cab, a dark chassis, a tall wooden cargo body and three axles. */
+  const m = world.materials;
+  const group = new THREE.Group();
+  const add = (geometry, material, position, rotation = [0, 0, 0]) => {
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(...position);
+    mesh.rotation.set(...rotation);
+    mesh.castShadow = true;
+    group.add(mesh);
+  };
+  const paint = paintMaterial(hex);
+  add(new THREE.BoxGeometry(6.4, 0.3, 1.9), m.steelDark, [0, 0.62, 0]);
+  add(new THREE.BoxGeometry(1.7, 1.55, 2.05), paint, [2.35, 1.5, 0]);
+  add(new THREE.PlaneGeometry(1.8, 0.7), m.glass, [3.21, 1.8, 0], [0, Math.PI / 2, 0]);
+  for (const side of [-1, 1]) add(new THREE.PlaneGeometry(0.9, 0.6), m.glass, [2.45, 1.85, side * 1.03], [0, side > 0 ? 0 : Math.PI, 0]);
+  add(new THREE.BoxGeometry(4.4, 1.9, 2.15), m.planks, [-0.85, 1.75, 0]);
+  add(new THREE.BoxGeometry(4.45, 0.12, 2.2), m.planksDark, [-0.85, 2.72, 0]);
+  for (const x of [-2.4, -1.3, 2.3]) {
+    for (const z of [-0.9, 0.9]) add(new THREE.CylinderGeometry(0.45, 0.45, 0.3, 12), m.tyre, [x, 0.45, z], [Math.PI / 2, 0, 0]);
+  }
+  for (const z of [-0.75, 0.75]) add(new THREE.BoxGeometry(0.05, 0.14, 0.3), m.bulb, [3.21, 1.0, z]);
+  for (const x of [-3.21, 3.21]) add(new THREE.BoxGeometry(0.03, 0.14, 0.42), m.cream, [x, 0.72, 0]);
+  return group;
+}
+
+function coachGroup(world, hex) {
+  /** Return a long intercity coach: tall body, a band of windows, a plain coloured stripe and three axles. */
+  const m = world.materials;
+  const group = new THREE.Group();
+  const add = (geometry, material, position, rotation = [0, 0, 0]) => {
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(...position);
+    mesh.rotation.set(...rotation);
+    mesh.castShadow = true;
+    group.add(mesh);
+  };
+  add(new THREE.BoxGeometry(11, 2.6, 2.45), paintMaterial(0xf3f1ea), [0, 1.85, 0]);
+  add(new THREE.BoxGeometry(11.02, 0.35, 2.47), paintMaterial(hex), [0, 1.0, 0]);
+  add(new THREE.BoxGeometry(10.2, 0.9, 2.48), m.glass, [-0.3, 2.45, 0]);
+  add(new THREE.BoxGeometry(0.05, 1.3, 2.2), m.glass, [5.51, 2.2, 0]);
+  for (const x of [-3.9, -2.6, 3.6]) for (const z of [-1.2, 1.2]) add(new THREE.CylinderGeometry(0.5, 0.5, 0.3, 12), m.tyre, [x, 0.5, z], [Math.PI / 2, 0, 0]);
+  for (const z of [-0.85, 0.85]) add(new THREE.BoxGeometry(0.05, 0.16, 0.35), m.bulb, [5.52, 0.9, z]);
+  return group;
+}
+
 export function carGroup(world, hex, kind = "hatch") {
-  /** Return a low-poly car: a hatchback, a sedan or a minibus. */
+  /** Return a low-poly vehicle: a hatchback, a sedan, a pickup, a minibus, a lorry or a coach, with plain blank number plates. */
+  if (kind === "coach") return coachGroup(world, hex);
+  if (kind === "truck") return truckGroup(world, hex);
   const m = world.materials;
   const paint = paintMaterial(hex);
   const glass = m.glass;
@@ -413,13 +432,18 @@ export function carGroup(world, hex, kind = "hatch") {
     mesh.castShadow = true;
     group.add(mesh);
   };
-  const long = kind === "bus" ? 5.4 : kind === "sedan" ? 4.4 : 3.8;
+  const long = kind === "bus" ? 5.4 : kind === "sedan" ? 4.4 : kind === "pickup" ? 4.9 : 3.8;
   const tall = kind === "bus" ? 1.6 : 0.62;
   add(new THREE.BoxGeometry(long, 0.62, 1.72), paint, [0, 0.62, 0]);
   if (kind === "bus") {
     add(new THREE.BoxGeometry(long - 0.4, tall, 1.68), paint, [-0.1, 1.55, 0]);
     for (const side of [-1, 1]) add(new THREE.PlaneGeometry(long - 1.0, 0.6), glass, [-0.2, 1.75, side * 0.85], [0, side > 0 ? 0 : Math.PI, 0]);
     add(new THREE.PlaneGeometry(1.5, 0.7), glass, [long / 2 - 0.19, 1.7, 0], [0, Math.PI / 2, 0]);
+  } else if (kind === "pickup") {
+    add(new THREE.BoxGeometry(1.7, tall, 1.56), glass, [long / 2 - 1.25, 1.24, 0]);
+    add(new THREE.BoxGeometry(1.6, 0.06, 1.6), paint, [long / 2 - 1.25, 1.57, 0]);
+    for (const z of [-0.82, 0.82]) add(new THREE.BoxGeometry(2.6, 0.38, 0.06), paint, [-long / 2 + 1.35, 1.12, z]);
+    add(new THREE.BoxGeometry(0.06, 0.38, 1.7), paint, [-long / 2 + 0.05, 1.12, 0]);
   } else {
     const cabin = kind === "sedan" ? 2.1 : 2.2;
     add(new THREE.BoxGeometry(cabin, tall, 1.56), glass, [kind === "sedan" ? -0.2 : -0.45, 1.24, 0]);
@@ -429,10 +453,11 @@ export function carGroup(world, hex, kind = "hatch") {
     for (const z of [-0.82, 0.82]) add(new THREE.CylinderGeometry(0.32, 0.32, 0.22, 12), m.tyre, [x, 0.32, z], [Math.PI / 2, 0, 0]);
   }
   for (const z of [-0.6, 0.6]) add(new THREE.BoxGeometry(0.05, 0.12, 0.3), m.bulb, [long / 2 + 0.01, 0.75, z]);
+  for (const x of [-long / 2 - 0.01, long / 2 + 0.01]) add(new THREE.BoxGeometry(0.03, 0.12, 0.38), m.cream, [x, 0.5, 0]);
   return group;
 }
 
-function umbrellaGeometry(colors) {
+export function umbrellaGeometry(colors) {
   /** Return a big market umbrella canopy with alternating coloured panels. */
   const canopy = new THREE.ConeGeometry(1.5, 0.55, 8, 1, true).toNonIndexed();
   const shade = new Float32Array(canopy.attributes.position.count * 3);
@@ -449,56 +474,19 @@ function umbrellaGeometry(colors) {
   return mergeGeometries([canopy, pole]);
 }
 
-function buildYard(world, batch, props, vendors, riders) {
-  /** Furnish the entrance yard: moto taxi ranks, umbrella sellers, parked cars, trees and street lamps. */
+function buildStreetLamps(world, batch, props) {
+  /** Stand street lamps along the front road, and leave one car parked by the north corner. */
   const m = world.materials;
-  const motoColors = [0xc1121f, 0x1d1d1d, 0x1d3557, 0xc1121f, 0x8a1a1a, 0x2a2a2a];
-  const ranks = [[-41.5, 7, 9], [-41.5, -15, 7], [-36.5, 21, 4]];
-  let count = 0;
-  for (const [x, z0, n] of ranks) {
-    for (let i = 0; i < n; i += 1) {
-      const moto = motoGroup(world, motoColors[count % motoColors.length]);
-      const z = z0 + i * 1.05;
-      moto.position.set(x + (i % 2) * 0.3, 0, z);
-      moto.rotation.y = Math.PI + 0.35 + (i % 3) * 0.08;
-      batch.addObject(moto);
-      if (count % 3 === 0) riders.push({ position: new THREE.Vector3(x - 0.15 + (i % 2) * 0.3, 0, z + 0.05), yaw: moto.rotation.y + Math.PI / 2 });
-      count += 1;
-    }
-    addCollider(x - 1.1, z0 - 0.6, x + 1.2, z0 + n * 1.05);
-  }
-  const umbrellas = new THREE.Mesh(mergeGeometries([
-    umbrellaGeometry([0xf6f3ec, 0xf2c230]).translate(-39, 0, -3.5),
-    umbrellaGeometry([0xd62828, 0xd62828, 0xf6f3ec]).translate(-44.5, 0, 14.5),
-    umbrellaGeometry([0xf6f3ec, 0xf2c230]).translate(-36.5, 0, 24),
-    umbrellaGeometry([0x2a6fb5, 0xf6f3ec]).translate(-45, 0, -12),
-  ]), new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
-  umbrellas.castShadow = true;
-  world.scene.add(umbrellas);
-  for (const [x, z] of [[-39, -3.5], [-44.5, 14.5], [-36.5, 24], [-45, -12]]) {
-    batch.box([0.8, 0.05, 0.6], [x + 0.4, 0.75, z], m.planks);
-    batch.box([0.7, 0.72, 0.5], [x + 0.4, 0.37, z], m.planksDark);
-    props.add("stool", placement([x - 0.35, 0, z + 0.1]));
-    vendors.push({ position: new THREE.Vector3(x - 0.35, 0, z + 0.1), yaw: Math.PI / 2, mode: "sitTalk", seat: 0.43 });
-    addCollider(x - 0.2, z - 0.4, x + 0.9, z + 0.4);
-    for (let k = 0; k < 6; k += 1) props.add(["oranges", "avocados", "bananas"][k % 3], placement([x + 0.2 + (k % 3) * 0.2, 0.78, z - 0.15 + Math.floor(k / 3) * 0.3], null, [0.35, 0.35, 0.35]));
-  }
-  const cars = [[0xc9ccd0, "hatch", -38.5, -9, 0.15], [0x22262b, "sedan", -45, 22, -0.1], [0xb8bcc0, "sedan", -45.5, -18, 0.05]];
-  for (const [hex, kind, x, z, turn] of cars) {
-    const car = carGroup(world, hex, kind);
-    car.position.set(x, 0, z);
-    car.rotation.y = Math.PI / 2 + turn;
-    batch.addObject(car);
-    addCollider(x - 1.0, z - 2.3, x + 1.0, z + 2.3);
-  }
-  const lamps = [];
   for (let z = -40; z <= 50; z += 15) {
     batch.cylinder(0.07, 0.09, 6.5, [-47.8, 3.25, z], m.steelDark, 6);
     batch.box([1.4, 0.08, 0.1], [-47.2, 6.45, z], m.steelDark);
     props.add("bulb", placement([-46.6, 6.3, z], null, [1.6, 1, 1.6]));
-    lamps.push(new THREE.Vector3(-46.6, 6.3, z));
   }
-  return { lamps };
+  const car = carGroup(world, 0xb8bcc0, "sedan");
+  car.position.set(-45.5, 0, -18);
+  car.rotation.y = Math.PI / 2 + 0.05;
+  batch.addObject(car);
+  addCollider(-46.5, -20.3, -44.5, -15.7);
 }
 
 function buildAcrossRoad(world, batch) {
@@ -509,6 +497,11 @@ function buildAcrossRoad(world, batch) {
   const signs = new Map();
   while (z < 80) {
     const width = 8 + seeded(index, 1) * 6;
+    const road = [LAYOUT.roads.north, LAYOUT.roads.south].find((center) => z + width > center - 6 && z < center + 6);
+    if (road !== undefined) {
+      z = road + 6.5;
+      continue;
+    }
     const floors = seeded(index, 2) < 0.3 ? 1 : 2;
     const height = floors * 3.4 + 0.6;
     const depth = 9;
@@ -598,11 +591,45 @@ function buildHills(world) {
     trees.setMatrixAt(i, holder.matrix);
   }
   world.scene.add(houses, roofs, trees);
+  buildCity(world);
+}
+
+function buildCity(world) {
+  /** Raise clusters of multi-storey city buildings with window rows on two far hills, as one instanced mesh. */
+  const clusters = [[3.75, 0.35, 230, 70], [0.55, 0.3, 260, 50]];
+  const total = clusters.reduce((sum, cluster) => sum + cluster[3], 0);
+  const windows = windowTexture();
+  const towers = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), new THREE.MeshLambertMaterial({ map: windows }), total);
+  const caps = new THREE.InstancedMesh(new THREE.BoxGeometry(1.06, 0.06, 1.06), new THREE.MeshLambertMaterial({ color: 0xd8d2c6 }), total);
+  const holder = new THREE.Object3D();
+  const tint = new THREE.Color();
+  let index = 0;
+  clusters.forEach(([bearing, spread, radius, count], cluster) => {
+    for (let i = 0; i < count; i += 1) {
+      const angle = bearing + (seeded(i, cluster * 7 + 1) - 0.5) * spread;
+      const r = radius + seeded(i, cluster * 7 + 2) * 70;
+      const width = 9 + seeded(i, cluster * 7 + 3) * 10;
+      const height = 10 + Math.pow(seeded(i, cluster * 7 + 4), 2) * 45;
+      holder.position.set(Math.cos(angle) * r, hillHeight(r, angle) - 1, Math.sin(angle) * r);
+      holder.rotation.set(0, seeded(i, cluster * 7 + 5) * 1.5, 0);
+      holder.scale.set(width, height, width * (0.7 + seeded(i, cluster * 7 + 6) * 0.6));
+      holder.updateMatrix();
+      towers.setMatrixAt(index, holder.matrix);
+      towers.setColorAt(index, tint.setHex([0xffffff, 0xf2e8d8, 0xdfe6ee, 0xf6efe2, 0xcfd9e6][i % 5]));
+      holder.position.y += height;
+      holder.scale.set(width, 1, width * (0.7 + seeded(i, cluster * 7 + 6) * 0.6));
+      holder.updateMatrix();
+      caps.setMatrixAt(index, holder.matrix);
+      index += 1;
+    }
+  });
+  windows.repeat.set(2, 3);
+  world.scene.add(towers, caps);
 }
 
 function buildTrees(world) {
   /** Plant a few big shade trees around the yard and along the road. */
-  const spots = [[-47, -26], [-46.5, 30], [-34, -24], [-59, -35], [-59, 18], [-59, 46], [66, -24], [68, 10], [66, 30], [-6, -24], [10, -22]];
+  const spots = [[-46.5, -24], [-46.5, 30], [-38.5, 36], [-60, -38], [-59, 18], [-60, 52], [71.5, 27], [70, 36], [69, -20]];
   const trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.22, 0.35, 5, 6).translate(0, 2.5, 0), world.materials.woodDark, spots.length);
   const crowns = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(2.6, 1).scale(1.3, 0.8, 1.3).translate(0, 6, 0),
     new THREE.MeshLambertMaterial({ color: 0x4a7a35 }), spots.length * 2);
@@ -635,11 +662,12 @@ export function buildMarket(world) {
   const vendors = [];
   const riders = [];
   buildGround(world, batch);
-  buildFacade(world, batch, props);
   const northStalls = buildNorthTerrace(world, batch, props, vendors);
   buildSouthSide(world, batch, props, vendors);
+  buildMainGateLane(world, batch, props);
   const hall = buildHall(world, batch, props, vendors);
-  const yard = buildYard(world, batch, props, vendors, riders);
+  buildStreetLamps(world, batch, props);
+  const perimeter = buildPerimeter(world, batch, props, vendors, riders);
   buildAcrossRoad(world, batch);
   buildHills(world);
   buildTrees(world);
@@ -647,7 +675,7 @@ export function buildMarket(world) {
   for (const [name, kind] of props.kinds) {
     if (name === "bulb") for (const matrix of kind.matrices) bulbs.push(new THREE.Vector3().setFromMatrixPosition(matrix));
   }
-  return { batch, props, vendors, riders, northStalls, hall, yard, bulbs, finish: () => finishMarket(world, batch, props, bulbs, hall) };
+  return { batch, props, vendors, riders, northStalls, hall, perimeter, bulbs, finish: () => finishMarket(world, batch, props, bulbs, hall) };
 }
 
 function finishMarket(world, batch, props, bulbs, hall) {

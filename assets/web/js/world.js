@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/BufferGeometryUtils.js";
 import { Sky } from "three/addons/Sky.js";
+import { cloudTexture } from "./textures.js";
 
 const TEXTURE_DIR = "/assets/web/textures/";
 const QUALITY = {
@@ -11,12 +12,13 @@ const SHADOW_HALF = 34;
 const SKY_SCALE = 900;
 const SKY_GAIN = 0.5;
 const DAY_KEYS = [
-  { at: 0.0, elevation: 1, sun: 0xff9a60, sunPower: 0.8, sky: 0x9a8aa8, ground: 0x4a3a2e, hemi: 0.9, fog: 0xb4a4b4, exposure: 0.95 },
-  { at: 0.12, elevation: 12, sun: 0xffc48a, sunPower: 2.2, sky: 0xf3d2b0, ground: 0x6e5038, hemi: 1.45, fog: 0xe8c9a6, exposure: 1.0 },
-  { at: 0.42, elevation: 72, sun: 0xfff4e6, sunPower: 3.0, sky: 0xdbe9f5, ground: 0x8a6a4c, hemi: 1.7, fog: 0xc9dcea, exposure: 0.95 },
-  { at: 0.78, elevation: 16, sun: 0xffa25a, sunPower: 2.4, sky: 0xf1b98a, ground: 0x6a4a32, hemi: 1.45, fog: 0xe9b88e, exposure: 1.0 },
-  { at: 1.0, elevation: -3, sun: 0xff7038, sunPower: 0.5, sky: 0x7f74a0, ground: 0x4a3a2e, hemi: 1.05, fog: 0x6c5a78, exposure: 1.0 },
+  { at: 0.0, elevation: 2, sun: 0xc9ced8, sunPower: 0.7, sky: 0xaab0bd, ground: 0x4a4038, hemi: 1.1, fog: 0xb8bdc6, exposure: 0.95 },
+  { at: 0.12, elevation: 14, sun: 0xeef0f2, sunPower: 1.5, sky: 0xd8dce2, ground: 0x6e5a48, hemi: 1.75, fog: 0xc9ced4, exposure: 1.0 },
+  { at: 0.42, elevation: 70, sun: 0xfbfbf8, sunPower: 1.9, sky: 0xe4e7ea, ground: 0x7e6650, hemi: 2.0, fog: 0xd2d6db, exposure: 0.95 },
+  { at: 0.78, elevation: 18, sun: 0xf2eee6, sunPower: 1.5, sky: 0xd2d4d8, ground: 0x6a5646, hemi: 1.7, fog: 0xc4c7cc, exposure: 1.0 },
+  { at: 1.0, elevation: -3, sun: 0xa9b0c4, sunPower: 0.5, sky: 0x8a90a6, ground: 0x40382f, hemi: 1.15, fog: 0x7d8296, exposure: 1.0 },
 ];
+const CLOUD_HEIGHT = 150;
 
 export const PALETTE = {
   steel: 0x8b979e, steelDark: 0x515b61, fasciaBlue: 0x2f62a8, fasciaRust: 0x8a4a2a, tyre: 0x1b1b1b, black: 0x222222,
@@ -55,10 +57,10 @@ export function createWorld(container) {
   const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 1200);
   const sky = new Sky();
   sky.scale.setScalar(SKY_SCALE);
-  Object.assign(sky.material.uniforms.turbidity, { value: 7 });
-  sky.material.uniforms.rayleigh.value = 1.4;
-  sky.material.uniforms.mieCoefficient.value = 0.006;
-  sky.material.uniforms.mieDirectionalG.value = 0.82;
+  Object.assign(sky.material.uniforms.turbidity, { value: 12 });
+  sky.material.uniforms.rayleigh.value = 0.5;
+  sky.material.uniforms.mieCoefficient.value = 0.02;
+  sky.material.uniforms.mieDirectionalG.value = 0.7;
   sky.material.fog = false;
   sky.material.uniforms.skyGain = { value: SKY_GAIN };
   sky.material.fragmentShader = `uniform float skyGain;\n${sky.material.fragmentShader}`
@@ -70,9 +72,12 @@ export function createWorld(container) {
   Object.assign(sun.shadow.camera, { left: -SHADOW_HALF, right: SHADOW_HALF, top: SHADOW_HALF, bottom: -SHADOW_HALF, near: 1, far: 160 });
   sun.shadow.bias = -0.0008;
   sun.shadow.normalBias = 0.03;
-  scene.add(sky, hemi, sun, sun.target);
+  const clouds = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400).rotateX(Math.PI / 2),
+    new THREE.MeshBasicMaterial({ map: cloudTexture(), transparent: true, depthWrite: false, fog: false, color: 0xe8eaee }));
+  clouds.position.y = CLOUD_HEIGHT;
+  scene.add(sky, clouds, hemi, sun, sun.target);
   const textures = loadTextures(renderer);
-  const world = { renderer, scene, camera, sky, hemi, sun, textures, quality: "high", time: { value: 0 }, focus: new THREE.Vector3(),
+  const world = { renderer, scene, camera, sky, clouds, hemi, sun, textures, quality: "high", time: { value: 0 }, focus: new THREE.Vector3(),
     sunDirection: new THREE.Vector3(), lampLevel: 0 };
   world.materials = createMaterials(world);
   return world;
@@ -288,6 +293,8 @@ export function applyDayCycle(world, progress) {
   world.materials.shelfWood.emissiveIntensity = 1 + world.lampLevel * 1.8;
   world.materials.shaft.opacity = 0.05 + 0.05 * Math.sin(p * Math.PI);
   world.hemi.intensity += world.lampLevel * 0.2;
+  world.clouds.material.map.offset.x = world.time.value * 0.0015;
+  world.clouds.material.color.copy(world.scene.fog.color).multiplyScalar(1.12);
   return p < 0.35 ? "Morning" : p < 0.7 ? "Afternoon" : "Evening";
 }
 

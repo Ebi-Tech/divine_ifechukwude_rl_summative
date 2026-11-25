@@ -16,6 +16,13 @@ export const LAYOUT = {
   archX: -30,
   yard: { xMin: -48, xMax: -30.5, zMin: -20, zMax: 26 },
   road: { x: -52.5, width: 8 },
+  block: { west: -30, south: 31, east: 66, north: -18.2, roadsideBack: -44.8, roadsideFront: -39.6 },
+  roads: { west: -52.5, north: -31.5, south: 35.2, east: 75, width: 7 },
+  mainGate: { z: 0.75, width: 6 },
+  facadeGate: { x: 50, opening: 5 },
+  southGate: { x: 28, width: 5 },
+  walk: { xMin: -62, xMax: 80, zMin: -39.2, zMax: 75 },
+  busPark: { x0: 8, x1: 70, z0: 39.6, z1: 75.5, gateZ: 51.5, gateWidth: 9 },
   across: { x: -63 },
 };
 
@@ -46,6 +53,29 @@ export function pushOutOfColliders(position, radius) {
       position.z += exits[0][1];
     }
   }
+}
+
+export function makeRoute(points) {
+  /** Turn a list of [x, z] ground points into a route with cumulative lengths, for walking or driving along it. */
+  const vectors = points.map(([x, z]) => ({ x, z }));
+  const lengths = [0];
+  for (let i = 1; i < vectors.length; i += 1) {
+    lengths.push(lengths[i - 1] + Math.hypot(vectors[i].x - vectors[i - 1].x, vectors[i].z - vectors[i - 1].z));
+  }
+  return { points: vectors, lengths, total: lengths[lengths.length - 1] };
+}
+
+export function routePoint(route, distance, out, direction) {
+  /** Write the ground point at a distance along a route into out, and the unit direction of travel into direction. */
+  const d = Math.min(Math.max(distance, 0), route.total);
+  let i = 1;
+  while (i < route.lengths.length - 1 && route.lengths[i] < d) i += 1;
+  const a = route.points[i - 1];
+  const b = route.points[i];
+  const span = Math.max(route.lengths[i] - route.lengths[i - 1], 1e-6);
+  const t = (d - route.lengths[i - 1]) / span;
+  out.set(a.x + (b.x - a.x) * t, 0, a.z + (b.z - a.z) * t);
+  direction.set((b.x - a.x) / span, 0, (b.z - a.z) / span);
 }
 
 export function seeded(index, salt = 0) {

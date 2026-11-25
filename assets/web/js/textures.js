@@ -394,3 +394,116 @@ export function drawChalkboard(board, shopName, frame, scoreLabel) {
   }
   texture.needsUpdate = true;
 }
+
+export function tileTexture() {
+  /** Return worn white wall tiles with grey grout, each tile a slightly different white, for the wash trough. */
+  return cached("tiles", () => {
+    const { canvas, context } = makeCanvas(256, 256);
+    context.fillStyle = "#9a9a94";
+    context.fillRect(0, 0, 256, 256);
+    for (let row = 0; row < 4; row += 1) {
+      for (let col = 0; col < 4; col += 1) {
+        const shade = 226 + Math.floor(Math.random() * 22);
+        context.fillStyle = `rgb(${shade},${shade},${shade - 4 - Math.floor(Math.random() * 8)})`;
+        context.fillRect(col * 64 + 3, row * 64 + 3, 58, 58);
+        context.fillStyle = "rgba(255,255,255,0.35)";
+        context.fillRect(col * 64 + 6, row * 64 + 6, 20, 3);
+      }
+    }
+    grain(context, 256, 256, 0.07);
+    context.fillStyle = "rgba(120,90,60,0.12)";
+    context.fillRect(0, 200, 256, 56);
+    return finishTexture(canvas, true);
+  });
+}
+
+export function ribbedTexture() {
+  /** Return the black ribbed plastic of a water tank, with lighter ribs around it. */
+  return cached("ribbed", () => {
+    const { canvas, context } = makeCanvas(32, 256);
+    context.fillStyle = "#1c1c1e";
+    context.fillRect(0, 0, 32, 256);
+    for (let y = 8; y < 256; y += 21) {
+      context.fillStyle = "#3a3a3e";
+      context.fillRect(0, y, 32, 5);
+      context.fillStyle = "#0e0e10";
+      context.fillRect(0, y + 5, 32, 3);
+    }
+    return finishTexture(canvas, true);
+  });
+}
+
+export function cloudTexture() {
+  /** Return a tiling layer of soft grey and white clouds for an overcast sky. */
+  return cached("clouds", () => {
+    const { canvas, context } = makeCanvas(512, 512);
+    context.fillStyle = "rgba(205,210,216,0.55)";
+    context.fillRect(0, 0, 512, 512);
+    for (let i = 0; i < 140; i += 1) {
+      const x = Math.random() * 512;
+      const y = Math.random() * 512;
+      const radius = 30 + Math.random() * 90;
+      const light = 200 + Math.floor(Math.random() * 50);
+      for (const [dx, dy] of [[0, 0], [512, 0], [-512, 0], [0, 512], [0, -512]]) {
+        const gradient = context.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, radius);
+        gradient.addColorStop(0, `rgba(${light},${light},${light + 4},0.55)`);
+        gradient.addColorStop(1, `rgba(${light},${light},${light + 4},0)`);
+        context.fillStyle = gradient;
+        context.fillRect(x + dx - radius, y + dy - radius, radius * 2, radius * 2);
+      }
+    }
+    const texture = finishTexture(canvas, true);
+    texture.repeat.set(5, 5);
+    return texture;
+  });
+}
+
+export function signAtlas(entries) {
+  /** Draw many painted signs into one tall texture, one sign per row, so every sign shares one material. */
+  const rowHeight = 128;
+  const { canvas, context } = makeCanvas(512, rowHeight * entries.length);
+  entries.forEach(([text, background, ink], row) => {
+    const top = row * rowHeight;
+    context.fillStyle = background;
+    context.fillRect(0, top, 512, rowHeight);
+    context.strokeStyle = ink;
+    context.lineWidth = 6;
+    context.strokeRect(8, top + 8, 496, rowHeight - 16);
+    context.fillStyle = ink;
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.font = "800 60px system-ui, sans-serif";
+    fitText(context, text, 460);
+    context.fillText(text, 256, top + rowHeight / 2 + 3);
+  });
+  grain(context, 512, rowHeight * entries.length, 0.05);
+  const texture = finishTexture(canvas);
+  return { texture, rows: entries.length };
+}
+
+export function atlasPlane(atlas, row, width, height) {
+  /** Return a plane whose UVs show one row of a sign atlas. */
+  const geometry = new THREE.PlaneGeometry(width, height);
+  const uv = geometry.attributes.uv;
+  for (let i = 0; i < uv.count; i += 1) {
+    const v = uv.getY(i);
+    uv.setY(i, 1 - (row + 1 - v) / atlas.rows);
+  }
+  return geometry;
+}
+
+export function windowTexture() {
+  /** Return a tiling facade of window rows for distant city buildings. */
+  return cached("windows", () => {
+    const { canvas, context } = makeCanvas(64, 64);
+    context.fillStyle = "#eeeae2";
+    context.fillRect(0, 0, 64, 64);
+    for (let row = 0; row < 4; row += 1) {
+      for (let col = 0; col < 4; col += 1) {
+        context.fillStyle = Math.random() < 0.15 ? "#c9d6e0" : "#4d6274";
+        context.fillRect(col * 16 + 3, row * 16 + 5, 10, 8);
+      }
+    }
+    return finishTexture(canvas, true);
+  });
+}

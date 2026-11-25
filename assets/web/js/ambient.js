@@ -1,26 +1,46 @@
 import * as THREE from "three";
 import { LAYOUT, seeded } from "./layout.js";
-import { addPerson, randomLook, riderLook } from "./people.js";
-import { bakeGroup, carGroup, motoGroup } from "./market.js";
+import { addPerson, agentLook, porterLook, randomLook, riderLook } from "./people.js";
 
-export const MAX_WALKERS = { high: 150, low: 60 };
-const WALKERS_PER_CUSTOMER = 0.75;
-const MIN_WALKERS = 24;
-const ROAD_LENGTH = 300;
+export const MAX_WALKERS = { high: 200, low: 75 };
+const WALKERS_PER_CUSTOMER = 1.1;
+const MIN_WALKERS = 40;
 const BIRDS = 16;
 const L = LAYOUT;
 
+const MAIN_GATE_ROUTE = { spread: 0.85, points: [[-46.5, 0.75], [-30.5, 0.9], [-24, 1.7], [10, 1.7]] };
+const FACADE_ROUTE = { spread: 0.8, points: [[50, -30], [50, -18.2], [50, -14.3], [48.5, -14.3], [48.5, 0.75], [40, 0.75], [21, 1.7], [10, 1.7]] };
+
 const ROUTES = [
-  { spread: 0.85, points: [[-46, 3], [-38, 1.7], [-31, 1.7], [21, 1.7], [40, 0.75], [48.5, 0.75], [48.5, -6.6], [24, -6.6]] },
-  { spread: 0.8, points: [[-45, -8], [-37, 1.2], [-31, 1.6], [5.95, 1.7], [5.95, 13.9], [-31, 13.9], [-38, 15], [-44, 19]] },
-  { spread: 0.65, points: [[-44, 22], [-31, 13.9], [21, 13.9], [40, 14.5], [35.5, 14.5], [35.5, -14.3], [61, -14.3]] },
+  { spread: 0.85, points: [[-29, 14.0], [-12.4, 14.0], [-12.4, 1.7], [21, 1.7], [40, 0.75], [48.5, 0.75], [48.5, -6.6], [24, -6.6]] },
+  { spread: 0.8, points: [[-46, 0.75], [-31, 0.9], [-12.4, 1.6], [-12.4, 14.0], [5.95, 13.9], [5.95, 1.7], [-29, 1.7]] },
+  { spread: 0.65, points: [[-44, -2], [-31, 0.9], [-12.4, 1.6], [-12.4, 13.9], [21, 13.9], [40, 14.5], [35.5, 14.5], [35.5, -14.3], [61, -14.3]] },
   { spread: 0.5, points: [[-12.4, 13.9], [-12.4, 1.8], [18, 1.8], [35.5, 1.2], [35.5, 8.1], [61, 8.1]] },
-  { spread: 1.2, points: [[-46.5, -30], [-46.5, 30]] },
-  { spread: 0.6, points: [[-60, 6], [-47, 6], [-40, 2]] },
-  { spread: 0.9, points: [[-59.5, -70], [-59.5, 70]] },
+  { spread: 0.8, points: [[-46.8, -26], [-46.8, 38]] },
+  { spread: 0.6, points: [[-60, 9.25], [-47, 9.25], [-41, 10.25]] },
+  { spread: 0.9, points: [[-59.5, -26.5], [-59.5, 39.5]] },
   { spread: 0.4, points: [[23, -14.3], [61.3, -14.3], [61.3, -6.6], [23, -6.6]] },
-  { spread: 0.75, points: [[-31, 1.7], [-12.4, 1.7], [-12.4, 13.9], [-31, 13.9]] },
+  { spread: 0.75, points: [[-29, 1.7], [-12.4, 1.7], [-12.4, 13.9], [-29, 13.9]] },
   { spread: 0.9, points: [[22, 0.75], [61, 0.75], [48.5, 0.75], [48.5, 14.5], [24, 14.5]] },
+  MAIN_GATE_ROUTE,
+  MAIN_GATE_ROUTE,
+  MAIN_GATE_ROUTE,
+  FACADE_ROUTE,
+  { spread: 0.7, points: [[-28, -20.4], [64, -20.4]] },
+  { spread: 0.12, points: [[-34, 3.25], [-31.3, 5.95], [-31.3, 9.25], [-35, 9.25], [-45, 9.25]] },
+  { spread: 0.3, look: "porter", points: [[-33.2, 3.75], [-40.5, 3.75], [-44, -4.75]] },
+  { spread: 0.5, points: [[-28, 38.6], [64, 38.6]] },
+  { spread: 0.2, points: [[-33, -39.25], [66, -39.25]] },
+  { spread: 0.6, points: [[28, 38.6], [28, 31], [28, 27], [35.5, 22.6], [35.5, 0.75], [40, 0.75]] },
+  { spread: 0.4, points: [[44, 67.5], [58, 67.5], [64, 63.5], [58, 57.5], [44, 57.5]] },
+  MAIN_GATE_ROUTE,
+  { spread: 0.3, look: "porter", points: [[-34.2, 4.85], [-41, 5.25], [-46.5, 11.25]] },
+  { spread: 0.3, points: [[-31.5, -7.75], [-39.4, -7.75], [-39.4, 5.75], [-34.6, 4.75]] },
+  { spread: 0.4, points: [[-16, -20.4], [-2, -20.4], [-2, -24.4], [-14, -24.4]] },
+  { spread: 0.3, points: [[67.6, -7], [70.6, -2.6], [70.6, 3.6], [67.6, 7.6]] },
+  { spread: 0.35, points: [[58, 65.5], [64, 58.1], [70.8, 58.1], [70.8, 39], [66, 34.8], [31, 34.2], [28, 31], [28, 27], [35.5, 22.6], [35.5, 8.1], [24, 8.1]] },
+  { spread: 0.35, points: [[35.5, 14.5], [35.5, 22.6], [28, 27], [28, 31], [31, 34.2], [66, 34.8], [70.8, 39], [70.8, 58.1], [64, 58.1], [60, 66.5]] },
+  FACADE_ROUTE,
 ];
 
 function makeRoute(definition) {
@@ -28,7 +48,7 @@ function makeRoute(definition) {
   const points = definition.points.map(([x, z]) => new THREE.Vector3(x, 0, z));
   const lengths = [0];
   for (let i = 1; i < points.length; i += 1) lengths.push(lengths[i - 1] + points[i].distanceTo(points[i - 1]));
-  return { points, lengths, total: lengths[lengths.length - 1], spread: definition.spread };
+  return { points, lengths, total: lengths[lengths.length - 1], spread: definition.spread, look: definition.look };
 }
 
 function routePoint(route, distance, out, direction) {
@@ -46,8 +66,8 @@ function routePoint(route, distance, out, direction) {
 function groundHeight(x, z) {
   /** Return the walking surface height: the raised hall floor, the curb and the lanes. */
   if (x > L.hall.xMin && x < L.hall.xMax && z > L.hall.zMin && z < L.hall.zMax) return 0.1;
-  if (x > -33.6 && x < -30) return 0.08;
-  if (x < -56.5 && x > -62.5) return 0.18;
+  if (z < L.block.north - 0.3 && z > L.block.north - 3.7 && x > L.block.west && x < L.block.east) return 0.08;
+  if (x < -56.5 && x > -62.5 && z > L.roads.north + 3.5 && z < L.roads.south - 3.5) return 0.18;
   return 0.04;
 }
 
@@ -58,8 +78,10 @@ function buildWalkers(crowd, ambient) {
     let k = 0;
     const rand = () => seeded(i * 53 + k++, 21);
     const kind = rand() < 0.06 ? "child" : undefined;
-    const person = addPerson(crowd, randomLook(rand, kind));
     const route = routes[i % routes.length];
+    const person = addPerson(crowd, route.look === "porter" ? porterLook(rand) : randomLook(rand, kind));
+    if (!route.look && i % 7 === 3) person.look.carry = "basket";
+    if (!route.look && i % 11 === 5) Object.assign(person.look, { carry: "jerrycan", carryColor: 0x6a4428 });
     ambient.walkers.push({ person, route, distance: rand() * route.total, direction: rand() < 0.5 ? 1 : -1,
       offset: (rand() * 2 - 1) * route.spread, pace: (kind ? 0.9 : 1.05) + rand() * 0.45, pause: 0, browse: 0.025 + rand() * 0.04,
       chat: rand() < 0.3 });
@@ -73,7 +95,8 @@ function buildVendors(crowd, market, ambient) {
     const rand = () => seeded(i * 71 + k++, 33);
     const look = randomLook(rand, rand() < 0.62 ? "woman" : "man");
     if (["basket", "sack", "bag", "jerrycan"].includes(look.carry)) look.carry = "none";
-    const person = addPerson(crowd, look);
+    const looks = { rider: riderLook, porter: porterLook, agent: agentLook };
+    const person = addPerson(crowd, looks[spot.look] ? looks[spot.look](rand) : look);
     const sitting = ["sit", "sew", "sitTalk", "groundSit"].includes(spot.mode);
     Object.assign(person, { x: spot.position.x, y: spot.position.y, z: spot.position.z, yaw: spot.yaw, mode: spot.mode,
       seat: spot.seat || 0.43 });
@@ -85,36 +108,6 @@ function buildVendors(crowd, market, ambient) {
     const person = addPerson(crowd, riderLook(() => seeded(i * 17 + k++, 44)));
     Object.assign(person, { x: spot.position.x, y: 0, z: spot.position.z, yaw: spot.yaw, mode: i % 2 ? "ride" : "sitTalk", seat: 0.78 });
     ambient.vendors.push({ person, base: spot.position.clone(), baseYaw: spot.yaw, mode: person.mode });
-  });
-}
-
-function buildTraffic(world, crowd, ambient) {
-  /** Send moto taxis with riders and passengers, cars and a minibus up and down the road outside the market. */
-  const specs = [
-    ["moto", 0xc1121f, 9.5, 1], ["moto", 0x1d1d1d, 10.5, -1], ["moto", 0x1d3557, 8.8, 1], ["moto", 0xc1121f, 11, -1],
-    ["moto", 0x2a2a2a, 9.8, -1], ["moto", 0x8a1a1a, 10.2, 1], ["car", 0xc9ccd0, 11, 1], ["car", 0x22262b, 12, -1],
-    ["bus", 0xf3f1ea, 8, 1], ["car", 0x8a1a1a, 10.5, -1], ["sedan", 0x2f4a6a, 11.5, 1],
-  ];
-  specs.forEach(([kind, hex, speed, direction], i) => {
-    const group = kind === "moto" ? motoGroup(world, hex) : carGroup(world, hex, kind === "car" ? "hatch" : kind);
-    const mesh = bakeGroup(group);
-    world.scene.add(mesh);
-    const vehicle = { mesh, kind, speed, direction, offset: (i / specs.length) * ROAD_LENGTH + seeded(i, 3) * 20, people: [] };
-    if (kind === "moto") {
-      let k = 0;
-      const rider = addPerson(crowd, riderLook(() => seeded(i * 7 + k++, 55)));
-      Object.assign(rider, { mode: "ride", seat: 0.78 });
-      vehicle.people.push([rider, -0.2]);
-      if (seeded(i, 9) < 0.55) {
-        const passenger = addPerson(crowd, randomLook(() => seeded(i * 11 + k++, 66)));
-        passenger.look.carry = passenger.look.carry === "baby" || passenger.look.carry === "backpack" ? passenger.look.carry : "none";
-        Object.assign(passenger, { mode: "ride", seat: 0.84 });
-        passenger.look.head = "helmet";
-        passenger.look.headColor = 0x2f8a3c;
-        vehicle.people.push([passenger, -0.62]);
-      }
-    }
-    ambient.traffic.push(vehicle);
   });
 }
 
@@ -144,10 +137,9 @@ function buildBirds(world, ambient) {
 
 export function buildAmbient(world, market, crowd) {
   /** Build the decoration-only life of the market: walkers, vendors, riders, traffic and birds. */
-  const ambient = { walkers: [], vendors: [], traffic: [], birds: [], activeWalkers: 60, crowd };
+  const ambient = { walkers: [], vendors: [], birds: [], activeWalkers: 60, crowd };
   buildVendors(crowd, market, ambient);
   buildWalkers(crowd, ambient);
-  buildTraffic(world, crowd, ambient);
   buildBirds(world, ambient);
   return ambient;
 }
@@ -207,25 +199,6 @@ function animateVendors(ambient, time) {
   });
 }
 
-function animateTraffic(ambient, time) {
-  /** Drive the vehicles along the road and keep riders and passengers on their motos. */
-  for (const vehicle of ambient.traffic) {
-    const travel = ((vehicle.offset + time * vehicle.speed) % ROAD_LENGTH) - ROAD_LENGTH / 2;
-    const z = vehicle.direction > 0 ? travel : -travel;
-    const x = L.road.x + (vehicle.direction > 0 ? 2 : -2);
-    vehicle.mesh.position.set(x, 0, z);
-    const yaw = vehicle.direction > 0 ? -Math.PI / 2 : Math.PI / 2;
-    vehicle.mesh.rotation.y = yaw;
-    for (const [person, along] of vehicle.people) {
-      person.x = x;
-      person.z = z + along * vehicle.direction;
-      person.y = 0;
-      person.yaw = yaw + Math.PI / 2;
-      person.mode = "ride";
-    }
-  }
-}
-
 const birdHolder = new THREE.Object3D();
 const wingHolder = new THREE.Object3D();
 
@@ -258,6 +231,5 @@ export function animateAmbient(ambient, delta, time) {
   /** Advance all decorative motion for this frame. */
   animateWalkers(ambient, delta, time);
   animateVendors(ambient, time);
-  animateTraffic(ambient, time);
   animateBirds(ambient, time);
 }

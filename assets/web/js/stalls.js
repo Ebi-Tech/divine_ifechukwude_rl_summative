@@ -219,6 +219,8 @@ export function buildStall(world, batch, props, frame, options) {
       batch.addMatrix(new THREE.BoxGeometry(0.08, 0.12, length), frame.m(x, (hFront + hBack) / 2 - 0.02, (d - overhang) / 2, slope), m.planksDark);
     }
     stallBox(batch, frame, 0, hFront - 0.12, -overhang + 0.05, w + 0.12, 0.28, 0.06, fasciaMaterial);
+    stallBox(batch, frame, 0, hFront + 0.02, -overhang - 0.06, w + 0.12, 0.09, 0.12, m.steel);
+    stallBox(batch, frame, w / 2 - 0.04, hFront / 2, -overhang - 0.08, 0.07, hFront, 0.07, m.steel);
     for (const side of [-1, 1]) stallBox(batch, frame, side * (w / 2 - 0.08), hFront / 2, -overhang + 0.12, 0.12, hFront, 0.12, postMaterial);
     stallBox(batch, frame, 0, hFront - 0.32, -overhang + 0.12, w, 0.1, 0.1, m.planksDark);
     batch.addMatrix(new THREE.CylinderGeometry(0.13, 0.13, w - 0.3, 10), frame.m(0, hFront - 0.15, 0.08, 0, 0, Math.PI / 2), m.corrGrey);

@@ -6,6 +6,7 @@ import {
 } from "./shops.js";
 import { MAX_WALKERS, animateAmbient, buildAmbient, setCrowdFromCustomers } from "./ambient.js";
 import { createCrowd, updateCrowd } from "./people.js";
+import { animateTraffic, buildTraffic } from "./traffic.js";
 import { createCameraRig } from "./camera.js";
 import { createSound, setSound, updateSound } from "./sound.js";
 import * as hud from "./hud.js";
@@ -13,11 +14,12 @@ import { LAYOUT } from "./layout.js";
 
 const MS_PER_DAY_AT_1X = 8000;
 const LOW_QUALITY_CUSTOMERS = 4;
-const CROWD_CAPACITY = 420;
+const CROWD_CAPACITY = 560;
 const QUALITY_KEY = "kimironko-quality";
 const SPEEDS = [1, 2, 4, 8];
 const LABEL_GAP = 6;
 const LABEL_RANGE = 55;
+const PRESET_KEYS = { Digit6: "main", Digit7: "side", Digit8: "back", Digit9: "roadside", Digit0: "five" };
 
 const app = {
   meta: null, seed: 1000, market: "default", speed: 1, playing: true, source: null, queue: [], lastReceivedDay: 0,
@@ -35,6 +37,7 @@ let shopsView;
 let ambient;
 let crowd;
 let cameraRig;
+let traffic;
 
 function readQuality() {
   /** Return the saved quality setting, or high when storage is unavailable. */
@@ -103,7 +106,8 @@ function laneInView() {
   /** Return whether the camera can see our lane: inside it, or high enough to look over the roofs. */
   const camera = world.camera.position;
   const inLane = camera.x > LAYOUT.facadeX - 0.5 && camera.x < LAYOUT.hall.xMin + 3 && camera.z > -9 && camera.z < 6.5;
-  return inLane || camera.y > 6;
+  const overBlock = camera.x > LAYOUT.block.west - 4 && camera.x < LAYOUT.block.east && camera.z > LAYOUT.block.north && camera.z < LAYOUT.block.south;
+  return inLane || (camera.y > 6 && overBlock);
 }
 
 function placeLabels() {
@@ -177,11 +181,12 @@ function tick() {
   pulseLowStock(world, time);
   animateKeepers(shopsView, time, app.dayProgress);
   animateAmbient(ambient, delta, time);
+  animateTraffic(traffic, crowd, delta, time, world.quality);
   world.camera.updateMatrixWorld();
   updateCrowd(crowd, delta, time, world.camera, world.quality);
   world.renderer.render(world.scene, world.camera);
   placeLabels();
-  updateSound(sound, ambient.activeWalkers / MAX_WALKERS.high, time);
+  updateSound(sound, { busy: ambient.activeWalkers / MAX_WALKERS.high, time, camera: world.camera, crowd, traffic });
   countFps();
   requestAnimationFrame(tick);
 }
@@ -258,9 +263,10 @@ function leaderIndex() {
   return app.meta.shops.findIndex((shop) => shop.id === leader);
 }
 
-function onModeChange(mode, shopIndex = null) {
-  /** Reflect the camera mode in the top bar, the shop panel and the walk hint. */
-  for (const button of document.querySelectorAll("[data-mode]")) button.classList.toggle("active", button.dataset.mode === mode);
+function onModeChange(mode, shopIndex = null, preset = null) {
+  /** Reflect the camera mode and any view preset in the top bar, the shop panel and the walk hint. */
+  for (const button of document.querySelectorAll("[data-mode]")) button.classList.toggle("active", button.dataset.mode === mode && !preset);
+  for (const button of document.querySelectorAll("[data-preset]")) button.classList.toggle("active", button.dataset.preset === preset);
   hud.openShopPanel(mode === "shop" ? shopIndex : null);
   document.getElementById("walk-hint").hidden = mode !== "walk";
 }
@@ -285,6 +291,8 @@ function handleKey(event) {
     setPlaying(!app.playing);
   } else if (/^Digit[1-5]$/.test(event.code)) {
     cameraRig.enterShop(Number(event.code.slice(5)) - 1);
+  } else if (PRESET_KEYS[event.code]) {
+    cameraRig.goPreset(PRESET_KEYS[event.code]);
   } else if (event.code === "Escape") {
     if (mode === "shop" || mode === "tour") cameraRig.leaveShop();
     document.getElementById("help-card").hidden = true;
@@ -324,6 +332,9 @@ function bindControls() {
   for (const button of document.querySelectorAll("[data-mode]")) {
     button.addEventListener("click", () => cameraRig.setMode(button.dataset.mode));
   }
+  for (const button of document.querySelectorAll("[data-preset]")) {
+    button.addEventListener("click", () => cameraRig.goPreset(button.dataset.preset));
+  }
   document.getElementById("quality-btn").addEventListener("click", () => applyQuality(world.quality === "high" ? "low" : "high"));
   document.getElementById("sound-btn").addEventListener("click", toggleSound);
   document.getElementById("help-btn").addEventListener("click", toggleHelp);
@@ -342,6 +353,7 @@ function buildScene() {
   market = buildMarket(world);
   shopsView = buildShops(world, app.meta.shops, labels, market, crowd);
   ambient = buildAmbient(world, market, crowd);
+  traffic = buildTraffic(world, crowd);
   market.finished = market.finish();
   cameraRig = createCameraRig(world, world.renderer.domElement, shopsView.shops, {
     hitBoxes: shopsView.hitBoxes,
@@ -371,7 +383,8 @@ async function start() {
   setSpeed(SPEEDS.includes(speed) ? speed : speed > 0 ? speed : 1);
   restart();
   if (params.get("camera") && ["walk", "tour"].includes(params.get("camera"))) cameraRig.setMode(params.get("camera"));
-  window.kimironko = { app, world, rig: () => cameraRig, shops: () => shopsView, crowd: () => crowd };
+  if (params.get("view")) cameraRig.goPreset(params.get("view"));
+  window.kimironko = { app, world, rig: () => cameraRig, shops: () => shopsView, crowd: () => crowd, traffic: () => traffic, sound: () => sound };
   requestAnimationFrame(tick);
 }
 

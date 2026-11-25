@@ -242,13 +242,51 @@ export function randomLook(rand, kind = rand() < 0.55 ? "woman" : "man") {
 }
 
 export function riderLook(rand) {
-  /** Return a moto taxi rider: helmet, numbered vest colours, dark trousers. */
+  /** Return a moto taxi rider: a plain yellow and blue reflective vest, a helmet and dark trousers. */
   const look = randomLook(rand, "man");
-  look.top = pick(rand, [0x2f8a3c, 0x2f8a3c, 0xe8742c, 0x1f4e9a]);
-  look.topPrint = [0, 0, 0, 0];
+  const yellowVest = rand() < 0.7;
+  const second = new THREE.Color(yellowVest ? 0x6fa8dc : 0xf2d21b);
+  look.top = yellowVest ? 0xf2d21b : 0x6fa8dc;
+  look.topPrint = [second.r, second.g, second.b, 1];
   look.head = "helmet";
-  look.headColor = pick(rand, [0x2f8a3c, 0xc0392b, 0x1f1f1f, 0xf2c230]);
+  look.headColor = pick(rand, [0xc0392b, 0xf2c230, 0x1f1f1f, 0x1f4e9a, 0xc0392b]);
   look.carry = "none";
+  return look;
+}
+
+export function porterLook(rand) {
+  /** Return a young porter looking for work: a deep amber vest with a silver reflective stripe, often an empty sack or a bag. */
+  const look = randomLook(rand, "man");
+  look.top = 0xf0a400;
+  look.topPrint = [0.86, 0.86, 0.84, 1];
+  look.head = rand() < 0.3 ? "cap" : "hair";
+  look.headColor = 0x1f1f1f;
+  const carry = rand();
+  look.carry = carry < 0.35 ? "sack" : carry < 0.55 ? "bag" : "none";
+  look.carryColor = 0x1c1c1c;
+  look.scale = 0.95 + rand() * 0.08;
+  return look;
+}
+
+export function agentLook(rand) {
+  /** Return a mobile money agent: a plain lemon yellow vest or jacket over everyday clothes, seated at a small table. */
+  const look = randomLook(rand, rand() < 0.5 ? "woman" : "man");
+  look.top = 0xffe14a;
+  look.topPrint = [0, 0, 0, 0];
+  look.carry = "none";
+  return look;
+}
+
+export function policeLook(rand) {
+  /** Return a traffic officer: a white shirt under a lime reflective vest with silver stripes, dark trousers and a white cap. */
+  const look = randomLook(rand, "man");
+  look.top = 0xd4f02e;
+  look.topPrint = [0.9, 0.9, 0.88, 1];
+  look.bottom = 0x1f2a44;
+  look.head = "cap";
+  look.headColor = 0xf4f4f0;
+  look.carry = "none";
+  look.scale = 1.0;
   return look;
 }
 
@@ -312,6 +350,19 @@ function standPose(person, time) {
     pose.shL = pose.shR = 0.9;
     pose.elL = pose.elR = 0.5 + 0.2 * Math.sin(time * 2.4 + s);
     pose.headPitch = 0.3;
+  } else if (person.mode === "direct") {
+    pose.outR = 1.45;
+    pose.shR = 0.25 + 0.35 * Math.max(0, Math.sin(time * 2.2 + s));
+    pose.elR = 0.15;
+    pose.outL = 0.25;
+    pose.elL = 1.6;
+    pose.shL = 0.3;
+    pose.headYaw = Math.sin(time * 0.6 + s) * 0.5;
+  } else if (person.mode === "present") {
+    pose.shL = pose.shR = 1.2 + 0.05 * Math.sin(time * 1.5 + s);
+    pose.outL = pose.outR = 0.32;
+    pose.elL = pose.elR = 0.25;
+    pose.headYaw *= 0.3;
   } else if (person.mode === "wave") {
     pose.shR = 2.6;
     pose.outR = 0.3 + 0.25 * Math.sin(time * 7);
