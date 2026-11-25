@@ -1,4 +1,4 @@
-"""Test how the val-selected agents and the baselines generalise to the harsh and price_scale markets.
+"""Test how the val-selected agents and the baselines generalise to the harsh, slow_market and credit_culture markets.
 
 Run:  uv run python -m analysis.generalization
 
@@ -17,7 +17,7 @@ from training.dqn_training import build_value_net
 from training.pg_training import build_logits_net
 
 OUTPUT_PATH = Path("logs/generalization.csv")
-MARKETS = ("default", "harsh", "price_scale")
+MARKETS = ("default", "harsh", "slow_market", "credit_culture")
 SEED_COPIES = (0, 1, 2)
 BASELINES = {"rule_policy": rule_policy, "rule_credit_policy": rule_credit_policy, "random_policy": random_policy}
 COLUMNS = (
