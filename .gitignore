@@ -4,3 +4,10 @@ __pycache__/
 .DS_Store
 .pytest_cache/
 .ipynb_checkpoints/
+
+# Reference photos for the 3D market: study only, never shipped
+reference_photos/
+
+# Report drafts and helper, kept out of the repo
+RL_report*.docx
+insert_figures.py
