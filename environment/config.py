@@ -5,11 +5,14 @@ Each product's cap is both its storage capacity (stock plus pending) and its obs
 """
 import copy
 
-MARKETS = ("default", "harsh", "price_scale")
+MARKETS = ("default", "harsh", "price_scale", "slow_market", "credit_culture")
 
 HARSH_DEFAULT_PROB_MULTIPLIER = 2.0
 HARSH_ARRIVAL_MULTIPLIER = 0.8
 DEFAULT_PRICE_FACTOR = 0.6
+SLOW_ARRIVAL_MULTIPLIER = 0.7
+CREDIT_CULTURE_ASK_PROB = 0.40
+CREDIT_CULTURE_DEFAULT_PROB_MULTIPLIER = 1.5
 
 BASE_CONFIG = {
     "market": "default",
@@ -218,6 +221,10 @@ def make_config(market="default", price_factor=None):
     if market == "price_scale":
         factor = DEFAULT_PRICE_FACTOR if price_factor is None else price_factor
         apply_price_scale(config, factor)
+    if market == "slow_market":
+        apply_slow_market(config)
+    if market == "credit_culture":
+        apply_credit_culture(config)
     set_loose_rice_cost(config)
     return config
 
@@ -226,6 +233,17 @@ def apply_harsh_market(config):
     """Double the debt default probability and cut customer arrivals, for a tougher market."""
     config["debt"]["default_prob"] *= HARSH_DEFAULT_PROB_MULTIPLIER
     config["customers"]["arrival_factor"] *= HARSH_ARRIVAL_MULTIPLIER
+
+
+def apply_slow_market(config):
+    """Cut customer arrivals to 70 percent, for a quiet market with the same prices and credit."""
+    config["customers"]["arrival_factor"] *= SLOW_ARRIVAL_MULTIPLIER
+
+
+def apply_credit_culture(config):
+    """Make credit common and riskier: twice as many customers ask for credit and debts default 1.5 times as often."""
+    config["credit"]["ask_prob"] = CREDIT_CULTURE_ASK_PROB
+    config["debt"]["default_prob"] *= CREDIT_CULTURE_DEFAULT_PROB_MULTIPLIER
 
 
 def apply_price_scale(config, factor):

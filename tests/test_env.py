@@ -332,9 +332,9 @@ def test_gymnasium_make_works():
     assert env.observation_space.contains(obs)
 
 
-@pytest.mark.parametrize("market", ["harsh", "price_scale"])
+@pytest.mark.parametrize("market", ["harsh", "price_scale", "slow_market", "credit_culture"])
 def test_market_variants_build_and_run(market):
-    """The harsh and price_scale variants build through gymnasium.make and run a full random episode."""
+    """Every market variant builds through gymnasium.make and runs a full random episode."""
     env = gymnasium.make(ENV_ID, market=market)
     obs, _ = env.reset(seed=SEED)
     env.action_space.seed(SEED)

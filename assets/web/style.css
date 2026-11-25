@@ -9,7 +9,7 @@
   --bad: #ef6f5e;
   --radius: 14px;
   --gap: 14px;
-  --top: 78px;
+  --top: 116px;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme: dark;
 }
@@ -50,6 +50,8 @@ h3 { margin: 10px 0 6px; font-size: 12px; color: var(--muted); font-weight: 700;
 .progress { height: 5px; margin-top: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
 #day-progress { height: 100%; width: 0; background: var(--accent); transition: width 0.4s ease; }
 .controls { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+.views { flex-basis: 100%; display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
+.views .segmented button { padding: 4px 10px; }
 .btn, .segmented button {
   font: inherit; font-size: 12.5px; font-weight: 650; color: var(--text);
   background: rgba(255, 255, 255, 0.09); border: 1px solid var(--card-edge); border-radius: 9px;
@@ -178,7 +180,7 @@ h3 { margin: 10px 0 6px; font-size: 12px; color: var(--muted); font-weight: 700;
 .bubble.walked::after { border-top-color: #ffd9d2; }
 .float { font-size: 15px; font-weight: 800; color: #fff3c4; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7); }
 
-@media (max-width: 1500px) { :root { --top: 122px; } }
+@media (max-width: 1500px) { :root { --top: 160px; } }
 @media (max-width: 1100px) {
   #right { width: 290px; }
   #cards { right: calc(290px + 2 * var(--gap)); grid-template-columns: repeat(5, minmax(120px, 1fr)); overflow-x: auto; }
@@ -186,7 +188,7 @@ h3 { margin: 10px 0 6px; font-size: 12px; color: var(--muted); font-weight: 700;
   #shop-panel { width: 280px; }
 }
 @media (max-width: 760px) {
-  :root { --top: 210px; }
+  :root { --top: 250px; }
   #right { left: var(--gap); width: auto; top: auto; bottom: 150px; }
   #chart, .chart-title, #chart-legend { display: none; }
   #cards { right: var(--gap); }
